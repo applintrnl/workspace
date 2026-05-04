@@ -5,17 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Dev Console Map</title>
 
-<!-- Leaflet -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
-<!-- Heatmap -->
 <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
 
 <style>
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
   background: radial-gradient(circle at 20% 20%, #1a1a1a, #050505);
   color: white;
   overflow: hidden;
@@ -23,10 +20,9 @@ body {
 
 .glass {
   backdrop-filter: blur(30px) saturate(180%);
-  background: linear-gradient(rgba(255,255,255,0.08), rgba(255,255,255,0.02));
-  border: 1px solid rgba(255,255,255,0.12);
-  box-shadow: 0 10px 40px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.05);
   border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.1);
 }
 
 .container {
@@ -44,62 +40,33 @@ body {
 #map {
   flex: 1;
   border-radius: 20px;
-  overflow: hidden;
 }
 
-/* UI */
-.title { font-size: 22px; font-weight: 600; }
-.subtitle { font-size: 13px; opacity: 0.6; margin-bottom: 10px; }
-
-input {
+input, button {
   width: 100%;
-  padding: 10px;
-  border-radius: 12px;
-  border: none;
-  background: rgba(255,255,255,0.08);
-  color: white;
-  margin-bottom: 5px;
-}
-
-/* Autocomplete */
-.suggestions {
-  max-height: 120px;
-  overflow-y: auto;
-  margin-bottom: 10px;
-}
-.suggestion {
-  padding: 6px;
-  font-size: 12px;
-  cursor: pointer;
-}
-.suggestion:hover { background: rgba(255,255,255,0.1); }
-
-/* Buttons */
-button {
-  padding: 8px;
-  border-radius: 999px;
-  border: none;
-  background: linear-gradient(135deg, #0a84ff, #4fa3ff);
-  color: white;
-  cursor: pointer;
-  margin: 3px 0;
-}
-
-/* Category Buttons */
-.categories button {
-  width: auto;
-  margin: 3px;
-  padding: 6px 10px;
-  font-size: 12px;
-}
-
-/* Results */
-.poi {
   padding: 8px;
   border-radius: 10px;
-  margin-top: 6px;
+  border: none;
+  margin-top: 5px;
+}
+
+button {
+  background: #0a84ff;
+  color: white;
+  cursor: pointer;
+}
+
+.poi {
+  padding: 6px;
+  margin-top: 5px;
   background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.suggestion {
   font-size: 12px;
+  padding: 4px;
   cursor: pointer;
 }
 </style>
@@ -110,59 +77,62 @@ button {
 <div class="container">
 
   <div class="sidebar glass">
-    <div class="title">Dev Console</div>
-    <div class="subtitle">POI Explorer + Heatmap</div>
+    <h3>Dev Console</h3>
 
-    <input id="query" placeholder="Suche Ort oder POI..." oninput="autocomplete()" />
-    <div id="suggestions" class="suggestions"></div>
+    <input id="query" placeholder="Suche..." oninput="autocomplete()" />
+    <div id="suggestions"></div>
 
-    <!-- Kategorien -->
-    <div class="categories">
-      <button onclick="categorySearch('restaurant')">🍔 Food</button>
-      <button onclick="categorySearch('cafe')">☕ Coffee</button>
-      <button onclick="categorySearch('gym')">🏋️ Gym</button>
-      <button onclick="categorySearch('hospital')">🏥 Health</button>
-    </div>
+    <button onclick="categorySearch('restaurant')">🍔 Food</button>
+    <button onclick="categorySearch('cafe')">☕ Coffee</button>
+    <button onclick="categorySearch('gym')">🏋️ Gym</button>
+    <button onclick="categorySearch('hospital')">🏥 Health</button>
 
-    <button onclick="toggleHeatmap()">Toggle Heatmap</button>
+    <label>Radius</label>
+    <input id="radius" type="range" min="50" max="1000" value="200"/>
+    <div id="radiusValue">200 m</div>
+
+    <button onclick="toggleHeatmap()">Heatmap</button>
+
+    <input id="saveName" placeholder="Preset Name"/>
+    <button onclick="saveState()">Speichern</button>
+    <button onclick="loadState()">Laden</button>
 
     <div id="results"></div>
   </div>
 
-  <div id="map" class="glass"></div>
+  <div id="map"></div>
 
 </div>
 
 <script>
 const map = L.map('map').setView([53.0793, 8.8017], 13);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '&copy; OpenStreetMap'
-}).addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
 let markers = [];
+let circles = [];
 let heatLayer = null;
 let heatEnabled = false;
+let currentCategory = null;
 
-/* ===== Autocomplete ===== */
+/* Autocomplete */
 async function autocomplete() {
-  const query = document.getElementById("query").value;
-  if (query.length < 3) return;
+  const q = document.getElementById("query").value;
+  if (q.length < 3) return;
 
-  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=5`;
-  const res = await fetch(url);
+  const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q}&limit=5`);
   const data = await res.json();
 
   const box = document.getElementById("suggestions");
   box.innerHTML = "";
 
-  data.forEach(place => {
+  data.forEach(p => {
     const el = document.createElement("div");
     el.className = "suggestion";
-    el.innerText = place.display_name;
+    el.innerText = p.display_name;
 
     el.onclick = () => {
-      map.setView([place.lat, place.lon], 14);
+      map.setView([p.lat, p.lon], 14);
       box.innerHTML = "";
     };
 
@@ -170,9 +140,12 @@ async function autocomplete() {
   });
 }
 
-/* ===== Category Search (Overpass API) ===== */
+/* POI Suche */
 async function categorySearch(type) {
+  currentCategory = type;
+
   const bbox = map.getBounds();
+
   const query = `
   [out:json];
   node["amenity"="${type}"](${bbox.getSouth()},${bbox.getWest()},${bbox.getNorth()},${bbox.getEast()});
@@ -187,11 +160,14 @@ async function categorySearch(type) {
   const data = await res.json();
 
   markers.forEach(m => map.removeLayer(m));
+  circles.forEach(c => map.removeLayer(c));
   markers = [];
+  circles = [];
 
-  const resultsDiv = document.getElementById("results");
-  resultsDiv.innerHTML = "";
+  const results = document.getElementById("results");
+  results.innerHTML = "";
 
+  const radius = document.getElementById("radius").value;
   const heatPoints = [];
 
   data.elements.forEach(el => {
@@ -201,6 +177,13 @@ async function categorySearch(type) {
     const marker = L.marker([lat, lon]).addTo(map);
     markers.push(marker);
 
+    const circle = L.circle([lat, lon], {
+      radius: radius,
+      color: "#0a84ff",
+      fillOpacity: 0.1
+    }).addTo(map);
+
+    circles.push(circle);
     heatPoints.push([lat, lon, 0.5]);
 
     const name = el.tags?.name || type;
@@ -213,22 +196,78 @@ async function categorySearch(type) {
       map.setView([lat, lon], 17);
     };
 
-    resultsDiv.appendChild(div);
+    results.appendChild(div);
   });
 
   if (heatEnabled) {
     if (heatLayer) map.removeLayer(heatLayer);
-    heatLayer = L.heatLayer(heatPoints, { radius: 25 }).addTo(map);
+    heatLayer = L.heatLayer(heatPoints).addTo(map);
   }
+
+  updateHash();
 }
 
-/* ===== Heatmap Toggle ===== */
+/* Radius */
+document.getElementById("radius").oninput = function() {
+  document.getElementById("radiusValue").innerText = this.value + " m";
+  circles.forEach(c => c.setRadius(this.value));
+  updateHash();
+};
+
+/* Heatmap */
 function toggleHeatmap() {
   heatEnabled = !heatEnabled;
-  if (!heatEnabled && heatLayer) {
-    map.removeLayer(heatLayer);
-  }
+  if (!heatEnabled && heatLayer) map.removeLayer(heatLayer);
 }
+
+/* Hash speichern */
+function updateHash() {
+  const state = {
+    lat: map.getCenter().lat,
+    lng: map.getCenter().lng,
+    zoom: map.getZoom(),
+    radius: document.getElementById("radius").value,
+    category: currentCategory
+  };
+
+  location.hash = btoa(JSON.stringify(state));
+}
+
+/* Hash laden */
+function loadFromHash() {
+  if (!location.hash) return;
+
+  const state = JSON.parse(atob(location.hash.substring(1)));
+
+  map.setView([state.lat, state.lng], state.zoom);
+  document.getElementById("radius").value = state.radius;
+  document.getElementById("radiusValue").innerText = state.radius + " m";
+
+  if (state.category) categorySearch(state.category);
+}
+
+/* Presets */
+function saveState() {
+  const name = document.getElementById("saveName").value;
+  if (!name) return;
+
+  localStorage.setItem("map_" + name, location.hash);
+  alert("Gespeichert");
+}
+
+function loadState() {
+  const name = document.getElementById("saveName").value;
+  if (!name) return;
+
+  const state = localStorage.getItem("map_" + name);
+  if (!state) return alert("Nicht gefunden");
+
+  location.hash = state;
+  loadFromHash();
+}
+
+/* Init */
+loadFromHash();
 </script>
 
 </body>
