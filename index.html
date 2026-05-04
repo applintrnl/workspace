@@ -2,15 +2,17 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Dev Console – Apple Maps</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Dev Console Map</title>
 
-<!-- MapKit JS -->
-<script src="https://cdn.apple-mapkit.com/mk/5.x.x/mapkit.js"></script>
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<!-- Heatmap -->
+<script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
 
 <style>
-/* ===== Base ===== */
-* { box-sizing: border-box; }
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
@@ -19,21 +21,14 @@ body {
   overflow: hidden;
 }
 
-/* ===== Glass Intensified ===== */
 .glass {
   backdrop-filter: blur(30px) saturate(180%);
-  background: linear-gradient(
-    rgba(255,255,255,0.08),
-    rgba(255,255,255,0.02)
-  );
+  background: linear-gradient(rgba(255,255,255,0.08), rgba(255,255,255,0.02));
   border: 1px solid rgba(255,255,255,0.12);
-  box-shadow:
-    0 10px 40px rgba(0,0,0,0.6),
-    inset 0 1px 1px rgba(255,255,255,0.1);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,255,0.1);
   border-radius: 20px;
 }
 
-/* ===== Layout ===== */
 .container {
   display: flex;
   height: 100vh;
@@ -41,77 +36,72 @@ body {
   padding: 15px;
 }
 
-/* ===== Sidebar ===== */
 .sidebar {
-  width: 320px;
+  width: 340px;
   padding: 20px;
 }
 
-/* ===== Map ===== */
 #map {
   flex: 1;
   border-radius: 20px;
   overflow: hidden;
 }
 
-/* ===== Titles ===== */
-.title {
-  font-size: 22px;
-  font-weight: 600;
-  margin-bottom: 5px;
-}
-.subtitle {
-  font-size: 13px;
-  opacity: 0.6;
-  margin-bottom: 20px;
-}
+/* UI */
+.title { font-size: 22px; font-weight: 600; }
+.subtitle { font-size: 13px; opacity: 0.6; margin-bottom: 10px; }
 
-/* ===== Inputs ===== */
 input {
   width: 100%;
   padding: 10px;
-  margin-bottom: 10px;
   border-radius: 12px;
   border: none;
-  outline: none;
   background: rgba(255,255,255,0.08);
   color: white;
+  margin-bottom: 5px;
 }
 
-/* ===== Button ===== */
+/* Autocomplete */
+.suggestions {
+  max-height: 120px;
+  overflow-y: auto;
+  margin-bottom: 10px;
+}
+.suggestion {
+  padding: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.suggestion:hover { background: rgba(255,255,255,0.1); }
+
+/* Buttons */
 button {
-  width: 100%;
-  padding: 10px;
+  padding: 8px;
   border-radius: 999px;
   border: none;
   background: linear-gradient(135deg, #0a84ff, #4fa3ff);
   color: white;
   cursor: pointer;
-  margin-top: 5px;
+  margin: 3px 0;
 }
 
-button:active {
-  transform: scale(0.96);
-}
-
-/* ===== POI List ===== */
-.poi {
-  padding: 10px;
-  border-radius: 12px;
-  margin-top: 10px;
-  background: rgba(255,255,255,0.05);
-  font-size: 13px;
-}
-
-/* ===== Floating HUD ===== */
-.hud {
-  position: absolute;
-  bottom: 20px;
-  right: 20px;
-  padding: 12px 16px;
+/* Category Buttons */
+.categories button {
+  width: auto;
+  margin: 3px;
+  padding: 6px 10px;
   font-size: 12px;
 }
 
+/* Results */
+.poi {
+  padding: 8px;
+  border-radius: 10px;
+  margin-top: 6px;
+  background: rgba(255,255,255,0.05);
+  font-size: 12px;
+  cursor: pointer;
+}
 </style>
 </head>
 
@@ -119,84 +109,125 @@ button:active {
 
 <div class="container">
 
-  <!-- Sidebar -->
   <div class="sidebar glass">
     <div class="title">Dev Console</div>
-    <div class="subtitle">Apple Maps POI Explorer</div>
+    <div class="subtitle">POI Explorer + Heatmap</div>
 
-    <input id="query" placeholder="z. B. Coffee, Apple Store..." />
-    <input id="lat" placeholder="Latitude (optional)" />
-    <input id="lng" placeholder="Longitude (optional)" />
+    <input id="query" placeholder="Suche Ort oder POI..." oninput="autocomplete()" />
+    <div id="suggestions" class="suggestions"></div>
 
-    <button onclick="searchPOI()">Search POIs</button>
+    <!-- Kategorien -->
+    <div class="categories">
+      <button onclick="categorySearch('restaurant')">🍔 Food</button>
+      <button onclick="categorySearch('cafe')">☕ Coffee</button>
+      <button onclick="categorySearch('gym')">🏋️ Gym</button>
+      <button onclick="categorySearch('hospital')">🏥 Health</button>
+    </div>
+
+    <button onclick="toggleHeatmap()">Toggle Heatmap</button>
 
     <div id="results"></div>
   </div>
 
-  <!-- Map -->
   <div id="map" class="glass"></div>
 
 </div>
 
-<!-- HUD -->
-<div class="hud glass">MapKit JS • Glass UI</div>
-
 <script>
-let map;
+const map = L.map('map').setView([53.0793, 8.8017], 13);
 
-/* ===== MapKit Init ===== */
-mapkit.init({
-  authorizationCallback: function(done) {
-    done("YOUR_MAPKIT_TOKEN"); // <-- HIER ersetzen
-  }
-});
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap'
+}).addTo(map);
 
-/* ===== Create Map ===== */
-map = new mapkit.Map("map", {
-  center: new mapkit.Coordinate(53.0793, 8.8017), // Bremen default
-  zoomLevel: 12,
-  showsCompass: mapkit.FeatureVisibility.Visible
-});
+let markers = [];
+let heatLayer = null;
+let heatEnabled = false;
 
-/* ===== Search POI ===== */
-function searchPOI() {
+/* ===== Autocomplete ===== */
+async function autocomplete() {
   const query = document.getElementById("query").value;
-  const lat = parseFloat(document.getElementById("lat").value) || map.center.latitude;
-  const lng = parseFloat(document.getElementById("lng").value) || map.center.longitude;
+  if (query.length < 3) return;
 
-  const search = new mapkit.Search({
-    region: new mapkit.CoordinateRegion(
-      new mapkit.Coordinate(lat, lng),
-      new mapkit.CoordinateSpan(0.1, 0.1)
-    )
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=5`;
+  const res = await fetch(url);
+  const data = await res.json();
+
+  const box = document.getElementById("suggestions");
+  box.innerHTML = "";
+
+  data.forEach(place => {
+    const el = document.createElement("div");
+    el.className = "suggestion";
+    el.innerText = place.display_name;
+
+    el.onclick = () => {
+      map.setView([place.lat, place.lon], 14);
+      box.innerHTML = "";
+    };
+
+    box.appendChild(el);
+  });
+}
+
+/* ===== Category Search (Overpass API) ===== */
+async function categorySearch(type) {
+  const bbox = map.getBounds();
+  const query = `
+  [out:json];
+  node["amenity"="${type}"](${bbox.getSouth()},${bbox.getWest()},${bbox.getNorth()},${bbox.getEast()});
+  out;
+  `;
+
+  const res = await fetch("https://overpass-api.de/api/interpreter", {
+    method: "POST",
+    body: query
   });
 
-  search.search(query, function(error, data) {
-    if (error) {
-      console.error(error);
-      return;
-    }
+  const data = await res.json();
 
-    map.removeAnnotations(map.annotations);
+  markers.forEach(m => map.removeLayer(m));
+  markers = [];
 
-    const resultsDiv = document.getElementById("results");
-    resultsDiv.innerHTML = "";
+  const resultsDiv = document.getElementById("results");
+  resultsDiv.innerHTML = "";
 
-    data.places.forEach(place => {
-      const coord = place.coordinate;
+  const heatPoints = [];
 
-      const annotation = new mapkit.MarkerAnnotation(coord, {
-        title: place.name
-      });
+  data.elements.forEach(el => {
+    const lat = el.lat;
+    const lon = el.lon;
 
-      map.addAnnotation(annotation);
+    const marker = L.marker([lat, lon]).addTo(map);
+    markers.push(marker);
 
-      const el = document.createElement("div");
-      el.className = "poi";
-      el.innerHTML = "<b>" + place.name + "</b><br>" + (place.formattedAddress || "");
-      resultsDiv.appendChild(el);
-    });
+    heatPoints.push([lat, lon, 0.5]);
+
+    const name = el.tags?.name || type;
+
+    const div = document.createElement("div");
+    div.className = "poi";
+    div.innerText = name;
+
+    div.onclick = () => {
+      map.setView([lat, lon], 17);
+    };
+
+    resultsDiv.appendChild(div);
   });
+
+  if (heatEnabled) {
+    if (heatLayer) map.removeLayer(heatLayer);
+    heatLayer = L.heatLayer(heatPoints, { radius: 25 }).addTo(map);
+  }
+}
+
+/* ===== Heatmap Toggle ===== */
+function toggleHeatmap() {
+  heatEnabled = !heatEnabled;
+  if (!heatEnabled && heatLayer) {
+    map.removeLayer(heatLayer);
+  }
 }
 </script>
 
