@@ -3,108 +3,113 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Workspace</title>
+<title>Dev Console – Apple Maps</title>
+
+<!-- MapKit JS -->
+<script src="https://cdn.apple-mapkit.com/mk/5.x.x/mapkit.js"></script>
 
 <style>
 /* ===== Base ===== */
+* { box-sizing: border-box; }
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
-  background: linear-gradient(135deg, #0a0a0a, #111);
+  background: radial-gradient(circle at 20% 20%, #1a1a1a, #050505);
   color: white;
+  overflow: hidden;
 }
 
-/* ===== Center Layout ===== */
+/* ===== Glass Intensified ===== */
+.glass {
+  backdrop-filter: blur(30px) saturate(180%);
+  background: linear-gradient(
+    rgba(255,255,255,0.08),
+    rgba(255,255,255,0.02)
+  );
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow:
+    0 10px 40px rgba(0,0,0,0.6),
+    inset 0 1px 1px rgba(255,255,255,0.1);
+  border-radius: 20px;
+}
+
+/* ===== Layout ===== */
 .container {
   display: flex;
-  justify-content: center;
-  padding: 80px 20px;
+  height: 100vh;
+  gap: 15px;
+  padding: 15px;
 }
 
-/* ===== Glass Card ===== */
-.card {
-  width: 420px;
-  backdrop-filter: blur(20px);
-  background: rgba(255,255,255,0.05);
+/* ===== Sidebar ===== */
+.sidebar {
+  width: 320px;
+  padding: 20px;
+}
+
+/* ===== Map ===== */
+#map {
+  flex: 1;
   border-radius: 20px;
-  padding: 25px;
-  border: 1px solid rgba(255,255,255,0.1);
-  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  overflow: hidden;
 }
 
-/* ===== Title ===== */
+/* ===== Titles ===== */
 .title {
-  font-size: 28px;
+  font-size: 22px;
   font-weight: 600;
   margin-bottom: 5px;
 }
-
 .subtitle {
-  font-size: 14px;
+  font-size: 13px;
   opacity: 0.6;
   margin-bottom: 20px;
 }
 
-/* ===== Section ===== */
-.section {
-  margin-top: 20px;
-}
-
-.section-title {
-  font-size: 12px;
-  opacity: 0.5;
+/* ===== Inputs ===== */
+input {
+  width: 100%;
+  padding: 10px;
   margin-bottom: 10px;
-}
-
-/* ===== Item Row ===== */
-.item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px;
-  margin-bottom: 10px;
-  border-radius: 14px;
-  background: rgba(255,255,255,0.04);
-  transition: 0.2s;
-}
-
-.item:hover {
+  border-radius: 12px;
+  border: none;
+  outline: none;
   background: rgba(255,255,255,0.08);
+  color: white;
 }
 
 /* ===== Button ===== */
-.btn {
-  background: #0a84ff;
-  border: none;
-  color: white;
-  padding: 6px 14px;
+button {
+  width: 100%;
+  padding: 10px;
   border-radius: 999px;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.btn:active {
-  transform: scale(0.95);
-}
-
-/* ===== Footer ===== */
-.footer {
-  margin-top: 20px;
-  text-align: center;
-}
-
-.footer button {
-  margin: 5px;
-  padding: 8px 12px;
-  border-radius: 10px;
   border: none;
-  background: rgba(255,255,255,0.06);
+  background: linear-gradient(135deg, #0a84ff, #4fa3ff);
   color: white;
   cursor: pointer;
+  margin-top: 5px;
 }
 
-.footer button:hover {
-  background: rgba(255,255,255,0.1);
+button:active {
+  transform: scale(0.96);
+}
+
+/* ===== POI List ===== */
+.poi {
+  padding: 10px;
+  border-radius: 12px;
+  margin-top: 10px;
+  background: rgba(255,255,255,0.05);
+  font-size: 13px;
+}
+
+/* ===== Floating HUD ===== */
+.hud {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  padding: 12px 16px;
+  font-size: 12px;
 }
 
 </style>
@@ -113,50 +118,87 @@ body {
 <body>
 
 <div class="container">
-  <div class="card">
 
-    <!-- Header -->
-    <div class="title">Workspace</div>
-    <div class="subtitle">iOS tools / AI tools 👀</div>
+  <!-- Sidebar -->
+  <div class="sidebar glass">
+    <div class="title">Dev Console</div>
+    <div class="subtitle">Apple Maps POI Explorer</div>
 
-    <!-- Section 1 -->
-    <div class="section">
-      <div class="section-title">TOOLS</div>
+    <input id="query" placeholder="z. B. Coffee, Apple Store..." />
+    <input id="lat" placeholder="Latitude (optional)" />
+    <input id="lng" placeholder="Longitude (optional)" />
 
-      <div class="item">
-        <div>Tool 1</div>
-        <button class="btn">OPEN</button>
-      </div>
+    <button onclick="searchPOI()">Search POIs</button>
 
-      <div class="item">
-        <div>Tool 2</div>
-        <button class="btn">OPEN</button>
-      </div>
-    </div>
-
-    <!-- Section 2 -->
-    <div class="section">
-      <div class="section-title">SYSTEM</div>
-
-      <div class="item">
-        <div>Feature A</div>
-        <button class="btn">RUN</button>
-      </div>
-
-      <div class="item">
-        <div>Feature B</div>
-        <button class="btn">RUN</button>
-      </div>
-    </div>
-
-    <!-- Footer -->
-    <div class="footer">
-      <button>Reset</button>
-      <button>Clear</button>
-    </div>
-
+    <div id="results"></div>
   </div>
+
+  <!-- Map -->
+  <div id="map" class="glass"></div>
+
 </div>
+
+<!-- HUD -->
+<div class="hud glass">MapKit JS • Glass UI</div>
+
+<script>
+let map;
+
+/* ===== MapKit Init ===== */
+mapkit.init({
+  authorizationCallback: function(done) {
+    done("YOUR_MAPKIT_TOKEN"); // <-- HIER ersetzen
+  }
+});
+
+/* ===== Create Map ===== */
+map = new mapkit.Map("map", {
+  center: new mapkit.Coordinate(53.0793, 8.8017), // Bremen default
+  zoomLevel: 12,
+  showsCompass: mapkit.FeatureVisibility.Visible
+});
+
+/* ===== Search POI ===== */
+function searchPOI() {
+  const query = document.getElementById("query").value;
+  const lat = parseFloat(document.getElementById("lat").value) || map.center.latitude;
+  const lng = parseFloat(document.getElementById("lng").value) || map.center.longitude;
+
+  const search = new mapkit.Search({
+    region: new mapkit.CoordinateRegion(
+      new mapkit.Coordinate(lat, lng),
+      new mapkit.CoordinateSpan(0.1, 0.1)
+    )
+  });
+
+  search.search(query, function(error, data) {
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    map.removeAnnotations(map.annotations);
+
+    const resultsDiv = document.getElementById("results");
+    resultsDiv.innerHTML = "";
+
+    data.places.forEach(place => {
+      const coord = place.coordinate;
+
+      const annotation = new mapkit.MarkerAnnotation(coord, {
+        title: place.name
+      });
+
+      map.addAnnotation(annotation);
+
+      const el = document.createElement("div");
+      el.className = "poi";
+      el.innerHTML = "<b>" + place.name + "</b><br>" + (place.formattedAddress || "");
+      resultsDiv.appendChild(el);
+    });
+  });
+}
+</script>
 
 </body>
 </html>
