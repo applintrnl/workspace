@@ -1,9 +1,162 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <title>Meine Seite</title>
-  </head>
-  <body>
-    <h1>Live 🚀</h1>
-  </body>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Workspace</title>
+
+<style>
+/* ===== Base ===== */
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+  background: linear-gradient(135deg, #0a0a0a, #111);
+  color: white;
+}
+
+/* ===== Center Layout ===== */
+.container {
+  display: flex;
+  justify-content: center;
+  padding: 80px 20px;
+}
+
+/* ===== Glass Card ===== */
+.card {
+  width: 420px;
+  backdrop-filter: blur(20px);
+  background: rgba(255,255,255,0.05);
+  border-radius: 20px;
+  padding: 25px;
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+}
+
+/* ===== Title ===== */
+.title {
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.subtitle {
+  font-size: 14px;
+  opacity: 0.6;
+  margin-bottom: 20px;
+}
+
+/* ===== Section ===== */
+.section {
+  margin-top: 20px;
+}
+
+.section-title {
+  font-size: 12px;
+  opacity: 0.5;
+  margin-bottom: 10px;
+}
+
+/* ===== Item Row ===== */
+.item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px;
+  margin-bottom: 10px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.04);
+  transition: 0.2s;
+}
+
+.item:hover {
+  background: rgba(255,255,255,0.08);
+}
+
+/* ===== Button ===== */
+.btn {
+  background: #0a84ff;
+  border: none;
+  color: white;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.btn:active {
+  transform: scale(0.95);
+}
+
+/* ===== Footer ===== */
+.footer {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.footer button {
+  margin: 5px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: none;
+  background: rgba(255,255,255,0.06);
+  color: white;
+  cursor: pointer;
+}
+
+.footer button:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+  <div class="card">
+
+    <!-- Header -->
+    <div class="title">Workspace</div>
+    <div class="subtitle">iOS tools / AI tools 👀</div>
+
+    <!-- Section 1 -->
+    <div class="section">
+      <div class="section-title">TOOLS</div>
+
+      <div class="item">
+        <div>Tool 1</div>
+        <button class="btn">OPEN</button>
+      </div>
+
+      <div class="item">
+        <div>Tool 2</div>
+        <button class="btn">OPEN</button>
+      </div>
+    </div>
+
+    <!-- Section 2 -->
+    <div class="section">
+      <div class="section-title">SYSTEM</div>
+
+      <div class="item">
+        <div>Feature A</div>
+        <button class="btn">RUN</button>
+      </div>
+
+      <div class="item">
+        <div>Feature B</div>
+        <button class="btn">RUN</button>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <button>Reset</button>
+      <button>Clear</button>
+    </div>
+
+  </div>
+</div>
+
+</body>
 </html>
